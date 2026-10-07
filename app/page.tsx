@@ -43,7 +43,7 @@ export default function HomePage() {
               Каталог
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Разгледайте трите основни колекции
+              Разгледайте четирите ни колекции
             </p>
           </div>
           <CatalogGrid />

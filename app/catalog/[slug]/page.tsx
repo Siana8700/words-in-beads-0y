@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { OrderButtons } from "@/components/order-buttons"
 import { ProductPurchase } from "@/components/product-purchase"
+import { CollectionView } from "@/components/collection-view"
 import { CATEGORIES, getCategory, CARE_NOTE } from "@/lib/site-data"
 
 export function generateStaticParams() {
@@ -64,8 +65,14 @@ export default async function CategoryPage({
           Назад към каталога
         </Link>
 
+        {category.products ? (
+          <section className="mt-8">
+            <CollectionView category={category} />
+          </section>
+        ) : (
+          <>
         <section className="mt-8">
-          <ProductPurchase category={category} />
+          <ProductPurchase product={category} />
         </section>
 
         {/* Description */}
@@ -77,6 +84,8 @@ export default async function CategoryPage({
             {category.description}
           </p>
         </section>
+          </>
+        )}
 
         {/* Care note */}
         <aside className="mt-6 flex items-start gap-3 rounded-2xl border border-border bg-secondary/25 p-5">
