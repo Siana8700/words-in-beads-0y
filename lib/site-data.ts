@@ -99,8 +99,8 @@ const AUTUMN_MODELS: Variant[] = [
 
 const AUTUMN_COLLECTION: Category = {
   slug: "autumn-collection",
-  title: "Autumn Collection",
-  tagline: "Есенна колекция",
+  title: "Есенна колекция",
+  tagline: "Топли есенни нюанси",
   description:
     "Топли есенни нюанси — рубинено, кремаво, коралово и прасковено — събрани в нежни гривни, изплетени на ръка. Носете ги заедно като комплект или изберете любимите си модели.",
   priceEur: 3,
