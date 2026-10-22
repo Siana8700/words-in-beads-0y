@@ -17,6 +17,7 @@ export type OrderInput = {
   courier: string
   address: string
   note?: string
+  promoCode?: string
   items: OrderItemInput[]
 }
 
@@ -24,6 +25,30 @@ export type OrderConfirmation = {
   orderNumber: string
   totalEur: number
   totalBgn: number
+}
+
+const PROMO_CODES: Record<string, number> = {
+  BEADS10: 0.1,
+}
+
+export function normalizePromoCode(code: string) {
+  return code.trim().toUpperCase()
+}
+
+export function getPromoDiscountRate(code: string | undefined): number {
+  if (!code) return 0
+  return PROMO_CODES[normalizePromoCode(code)] ?? 0
+}
+
+function roundEur(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+export function calculateTotals(subtotalEur: number, promoCode?: string) {
+  const rate = getPromoDiscountRate(promoCode)
+  const discountEur = roundEur(subtotalEur * rate)
+  const totalEur = roundEur(subtotalEur - discountEur)
+  return { subtotalEur, rate, discountEur, totalEur }
 }
 
 export const SUBMIT_ERROR_MESSAGE =
@@ -73,14 +98,23 @@ function describeItem(item: OrderItemInput, index: number) {
 export async function submitOrder(
   order: OrderInput,
 ): Promise<OrderConfirmation> {
-  const totalEur = order.items.reduce(
+  const subtotalEur = order.items.reduce(
     (sum, i) => sum + i.priceEur * i.quantity,
     0,
+  )
+  const promoCode =
+    order.promoCode && getPromoDiscountRate(order.promoCode) > 0
+      ? normalizePromoCode(order.promoCode)
+      : undefined
+  const { rate, discountEur, totalEur } = calculateTotals(
+    subtotalEur,
+    promoCode,
   )
   const totalBgn = Number((totalEur * EUR_TO_BGN).toFixed(2))
   const orderNumber = `WIB-${Date.now().toString(36).toUpperCase().slice(-6)}`
   const fullName = `${order.firstName.trim()} ${order.lastName.trim()}`
   const totalLabel = `${formatEur(totalEur)} / ${formatBgn(totalEur)}`
+  const discountPercent = Math.round(rate * 100)
 
   const payload = {
     _subject: `Нова поръчка ${orderNumber} — ${fullName} (${formatEur(totalEur)})`,
@@ -100,7 +134,13 @@ export async function submitOrder(
       "Единична цена (EUR)": i.priceEur,
       "Сума (EUR)": Number((i.priceEur * i.quantity).toFixed(2)),
     })),
+    "Междинна сума": `${formatEur(subtotalEur)} / ${formatBgn(subtotalEur)}`,
+    "Промо код": promoCode ?? "—",
+    "Отстъпка": promoCode
+      ? `${discountPercent}%: -${formatEur(discountEur)} / -${formatBgn(discountEur)}`
+      : "—",
     "Обща сума за плащане": totalLabel,
+    "Обща сума (EUR)": totalEur,
   }
 
   const res = await fetch(FORMSPREE_ENDPOINT, {

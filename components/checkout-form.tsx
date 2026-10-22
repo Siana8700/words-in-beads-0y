@@ -6,6 +6,9 @@ import { useCart } from "@/lib/cart-context"
 import { formatEur, formatBgn } from "@/lib/site-data"
 import {
   SUBMIT_ERROR_MESSAGE,
+  calculateTotals,
+  getPromoDiscountRate,
+  normalizePromoCode,
   submitOrder,
   validateOrder,
   type OrderConfirmation,
@@ -24,6 +27,34 @@ export function CheckoutForm() {
   const [confirmation, setConfirmation] = useState<OrderConfirmation | null>(
     null,
   )
+  const [promoInput, setPromoInput] = useState("")
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
+  const [promoStatus, setPromoStatus] = useState<"success" | "error" | null>(
+    null,
+  )
+  const { rate, discountEur, totalEur: finalTotalEur } = calculateTotals(
+    totalEur,
+    appliedPromo ?? undefined,
+  )
+
+  function applyPromo() {
+    const code = normalizePromoCode(promoInput)
+    if (code && getPromoDiscountRate(code) > 0) {
+      setAppliedPromo(code)
+      setPromoStatus("success")
+    } else {
+      setAppliedPromo(null)
+      setPromoStatus("error")
+    }
+  }
+
+  function handlePromoKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing || e.keyCode === 229) {
+      return
+    }
+    e.preventDefault()
+    applyPromo()
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -40,6 +71,7 @@ export function CheckoutForm() {
       courier: String(data.get("courier") ?? ""),
       address: String(data.get("address") ?? ""),
       note: String(data.get("note") ?? ""),
+      promoCode: appliedPromo ?? undefined,
       items: items.map((i) => ({
         title: i.title,
         variantName: i.variantName,
@@ -244,14 +276,75 @@ export function CheckoutForm() {
             </li>
           ))}
         </ul>
+        <div className="mt-4 border-t border-border pt-4">
+          <label
+            htmlFor="promoCode"
+            className="text-sm font-medium text-foreground"
+          >
+            Promo Code
+          </label>
+          <div className="mt-1.5 flex gap-2">
+            <input
+              id="promoCode"
+              type="text"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value)}
+              onKeyDown={handlePromoKeyDown}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              aria-describedby={promoStatus ? "promoStatus" : undefined}
+              aria-invalid={promoStatus === "error"}
+              className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm uppercase text-foreground outline-none transition-colors placeholder:normal-case focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Въведете код"
+            />
+            <button
+              type="button"
+              onClick={applyPromo}
+              className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Apply
+            </button>
+          </div>
+          {promoStatus && (
+            <p
+              id="promoStatus"
+              role="status"
+              aria-live="polite"
+              className={`mt-2 text-sm ${
+                promoStatus === "success"
+                  ? "text-green-700 dark:text-green-400"
+                  : "text-destructive"
+              }`}
+            >
+              {promoStatus === "success"
+                ? "Promo code applied successfully!"
+                : "Invalid promo code"}
+            </p>
+          )}
+        </div>
+
+        {appliedPromo && (
+          <dl className="mt-4 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Междинна сума</dt>
+              <dd className="text-foreground">{formatEur(totalEur)}</dd>
+            </div>
+            <div className="flex justify-between text-green-700 dark:text-green-400">
+              <dt>Discount ({Math.round(rate * 100)}%)</dt>
+              <dd>-{formatEur(discountEur)}</dd>
+            </div>
+          </dl>
+        )}
+
         <div className="mt-4 flex items-baseline justify-between border-t border-border pt-4">
           <span className="font-medium text-foreground">Общо</span>
           <span className="text-right">
             <span className="block font-serif text-2xl font-semibold text-foreground">
-              {formatEur(totalEur)}
+              {formatEur(finalTotalEur)}
             </span>
             <span className="text-sm text-muted-foreground">
-              {formatBgn(totalEur)}
+              {formatBgn(finalTotalEur)}
             </span>
           </span>
         </div>
